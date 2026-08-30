@@ -1,0 +1,29 @@
+# Backups left by tooling — e.g. ginger-setup.sh preserves peda's vendored six
+*.bak
+*.orig
+*.orig-*
+
+# Secrets — never commit; the Confluence-style scripts read these from the env
+.env
+.env.*
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node
+node_modules/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Scratch: local analysis output, extracted firmware, workspaces
+workspace/
+*.log
