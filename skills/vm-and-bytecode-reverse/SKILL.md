@@ -1,6 +1,6 @@
 ---
 name: vm-and-bytecode-reverse
-description: Reversing virtual-machine protections and managed bytecode. Use when a binary dispatches through a handler table over a bytecode blob (VMProtect, Themida/CodeVirtualizer, custom VMs) — locating the dispatcher and VPC, recovering the handler semantics and instruction set, lifting bytecode back to readable form — or when the target is managed bytecode rather than native code: Python .pyc, Java .class and Android DEX, .NET IL, WebAssembly, Lua, and Ruby/PHP opcodes, including decompiler recovery, obfuscated-name handling, and bytecode-level patching.
+description: Reversing virtual-machine protections and managed bytecode. Use when a binary dispatches through a handler table over a bytecode blob (VMProtect, Themida, custom VMs), or when the target is managed bytecode rather than native code — Python .pyc, Java .class, Android DEX, .NET IL, WebAssembly, Lua, Ruby and PHP opcodes. Covers decompiler recovery, obfuscated names, and bytecode patching.
 ---
 
 # SKILL: VM & Bytecode Reversing

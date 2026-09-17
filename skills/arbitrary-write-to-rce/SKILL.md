@@ -1,6 +1,6 @@
 ---
 name: arbitrary-write-to-rce
-description: Converting a write primitive into code execution. Use when you already control "write value V to address A" (from a heap, format string, OOB, or type-confusion bug) and need a target — GOT overwrite, the removed __free_hook/__malloc_hook, FSOP and _IO_FILE vtable abuse (House of Apple/Cat, _IO_wfile_jumps), exit handler and __exit_funcs overwrite with PTR_MANGLE, tls_dtor_list, .fini_array, saved return address via environ, setcontext register-set pivots, and data-only wins. Covers which targets survive Full RELRO and glibc 2.34+, and how to trigger each one.
+description: Converting a write primitive into code execution. Use when you already control "write value V to address A" — from a heap, format string, OOB, or type-confusion bug — and need a target. Covers which targets survive Full RELRO and glibc 2.34+, and how to trigger each.
 ---
 
 # SKILL: Arbitrary Write → RCE

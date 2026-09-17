@@ -1,11 +1,20 @@
 ---
 name: bug-class-catalog
-description: Memory corruption and vulnerability class catalog with CWE IDs, exploit primitives, per-language dangerous sink patterns (C/C++, Python, Java, PHP), and sanitizer bypass techniques. Use when auditing source code for stack/heap buffer overflow, use-after-free, double-free, OOB read/write, integer overflow, format string bugs, type confusion, doing taint analysis source-to-sink, or mapping bug classes to exploit primitives.
+description: Cross-language map from vulnerability class to CWE to exploit primitive, with per-language dangerous sink patterns. Use when classifying a bug you have found, deciding what primitive a class yields, or picking the exploitation skill for it. For language-specific semantics use c-cpp-review or rust-security-audit instead.
 ---
 
 # SKILL: Bug Class Catalog
 
-Reference for memory corruption and vulnerability classes, exploit primitives, and source code review patterns.
+Reference for memory corruption and vulnerability classes, exploit primitives, and source code review patterns. This is the **cross-language** map from class → CWE → primitive → exploitation skill.
+
+For the *language-specific* catalog — the surprising library semantics behind each class and what makes a sighting a false positive — go to the per-language skill instead, which is far more specific than anything here:
+
+| Target language | Skill | What it adds over this catalog |
+|---|---|---|
+| C / C++ | **`c-cpp-review`** | ~50 classes with the exact library contract each violates (`strncat`'s third argument, `snprintf`'s return value, `access()`+`open()`, `AF_UNSPEC` `connect`, `qsort` comparator transitivity, Windows path and IPC classes), plus the per-unit review questions and the coverage ledger |
+| Rust | **`rust-security-audit`** | the safe/unsafe boundary, why a memory-corruption claim in safe Rust is a false positive, panic-DoS as the real safe-code class, FFI and concurrency clusters |
+
+Use this file to decide *what a class is and what it buys you*; use those to decide *whether this particular site is one*.
 
 ## Source Code Review
 
@@ -87,9 +96,22 @@ Once a class is confirmed and you are moving from audit to proof, go straight to
 - **Primitive**: controlled object layout → vtable/function pointer overwrite.
 
 ### Other Classes
-- **Uninitialized memory** (CWE-457): stack/heap data leaked or interpreted as pointers.
-- **Race condition / TOCTOU** (CWE-367): check-then-use with a window for attacker interference.
+- **Uninitialized memory** (CWE-457): stack/heap data leaked or interpreted as pointers. **Both halves count** — struct padding or tail bytes written to a socket or file is an information leak even when nothing misbehaves.
+- **Race condition / TOCTOU** (CWE-367): check-then-use with a window for attacker interference. **Double-fetch** is the memory form: reading an attacker-writable location twice and assuming the reads agree, so the validated value is not the used value.
 - **Use-after-return**: pointer to stack variable escapes the function frame.
+- **Reachable panic / assertion** (CWE-617): in Rust, Go, and any language where a failed assertion aborts the process, a panic on attacker input is an availability finding. **Recursive `Drop` and recursive deserialization stack overflow are not catchable** — see `rust-security-audit`.
+- **Unit and scale mismatch**: two quantities in one expression measured differently and never converted — bytes vs elements, ticks vs milliseconds, a fixed-point value at the wrong decimal scale. Reaches memory corruption whenever the wrong one becomes a size.
+- **Timing side channel** (CWE-208) and **secret retained in memory** (CWE-226/CWE-244): division, branching, or early-exit comparison on a secret; a wipe deleted by the optimizer. Depth in `crypto-side-channel-audit`.
+
+## Before Filing Any of These
+
+A class label is a hypothesis, not a finding. Every candidate goes through
+`false-positive-refutation` — the six gates, the devil's-advocate questions, and the class-specific
+verification requirements — before it enters a report. The single highest-value check for this
+catalog: **memory corruption in safe Rust, in Go without `unsafe.Pointer`/cgo, or in a managed
+runtime is almost always a false positive.** Establish the language's safety subset first.
+
+Then, for every finding that survives, run `variant-analysis` — one bug is rarely alone.
 
 ## Key Sink Patterns by Language
 

@@ -1,6 +1,6 @@
 ---
 name: semgrep
-description: "Run Semgrep static analysis scans and create custom detection rules. Use when asked to scan code with Semgrep, find security vulnerabilities, write custom YAML rules, or detect specific bug patterns. IMPORTANT: Also use this skill when users ask to 'scan for bugs', 'check code quality', 'find vulnerabilities', 'static analysis', 'lint for security', 'audit this code', or want to enforce coding standards — even if they don't mention Semgrep by name. Semgrep is the right tool for pattern-based code scanning across 30+ languages."
+description: Run Semgrep scans and author custom detection rules with test-first discipline and taint mode. IMPORTANT: also use when asked to 'scan for bugs', 'find vulnerabilities', 'static analysis', 'lint for security' or 'audit this code' without naming Semgrep. Covers rule authoring constraints, porting a rule to another language, and where Semgrep sits in the escalation ladder.
 ---
 
 # Semgrep Static Analysis
@@ -219,6 +219,40 @@ semgrep --test --config rule.yaml test-file
 └── <rule-id>.<ext>    # Test file
 ```
 
+## Rule Authoring Constraints
+
+Non-negotiable, because each one produces a rule that looks fine and quietly does not work:
+
+- **One YAML file, one rule.** Combining rules in a file makes `semgrep --test` unable to attribute
+  a failure, and makes the rule un-reusable.
+- **100% test pass, not "most tests pass."** A rule with one failing test is a rule with an unknown
+  false-positive or false-negative rate.
+- **`todoruleid:` and `todook:` are forbidden.** They mark a rule as knowingly incomplete and then
+  ship it as if it were done. Fix the rule or delete the case.
+- **Never `languages: generic`** when targeting a specific language. Generic mode matches text, not
+  syntax, and its false-positive rate on real code makes the rule worse than grep.
+- **Prefer taint mode for anything with a data flow.** `eval($X)` matches both `eval(user_input)`
+  and `eval("literal")`; taint mode only fires when untrusted data actually reaches the sink. It is
+  fine to switch back to pattern matching if taint does not propagate as expected — the goal is a
+  working rule, not loyalty to a mode.
+- **Optimize last.** Write correct patterns, get the tests green, *then* simplify — and re-run the
+  tests after each simplification.
+
+## Porting a Rule to Another Language
+
+A rule that catches a bug in Python usually has a sibling bug in the project's Go or JS. Porting is
+test-driven, same as authoring:
+
+1. **Write the target-language test file first** — the vulnerable case *and* the safe cases, using
+   that language's idioms rather than a transliteration of the source language's.
+2. **Dump the AST** in the target language (`semgrep --dump-ast -l go bad.go`). The equivalent
+   construct is often shaped differently: Python's `subprocess.run(..., shell=True)` maps to Go's
+   `exec.Command("sh", "-c", ...)`, not to `exec.Command`.
+3. **Re-derive the source and sink lists** for the target language. The taint *shape* ports; the
+   source and sink names never do.
+4. **Test to 100%**, then compare the match count on a real tree against the original rule's. A
+   port that fires far more or far less than the original is usually matching the wrong construct.
+
 ## Detailed References
 
 **Official Semgrep Documentation:**
@@ -263,6 +297,31 @@ dangerous(sanitize(user_input))
 | "It matches the vulnerable case" | Matching vulnerabilities is half the job; verify safe cases don't match |
 | "Taint mode is overkill" | For injection vulnerabilities, taint mode gives better precision |
 | "One test case is enough" | Include edge cases: different coding styles, sanitized inputs, safe alternatives |
+| "It matches, so it's a finding" | A Semgrep hit is a hypothesis. It becomes a candidate after a backward taint walk, and a finding after `false-positive-refutation` |
+| "I'll mark the hard case `todoruleid` and move on" | That ships a rule with a known blind spot and no record of it |
+| "`languages: generic` will catch more" | It catches more *text*. Precision collapses and the rule gets ignored |
+
+## Where Semgrep Sits
+
+Semgrep is the middle rung of the escalation ladder — cheap, multi-language, no build required,
+**intra-file** taint only. Escalate past it when you need to prove a path across files:
+
+| Need | Tool |
+|---|---|
+| Sink inventory, string hunting | `rg` |
+| C/C++ shape with scope awareness | `weggli` |
+| Multi-language patterns, taint, CI, custom rules | **Semgrep** |
+| True interprocedural dataflow, path queries | CodeQL (`source-audit`) |
+| Interprocedural C/C++ with no working build | joern (`source-audit`) |
+
+## Cross-references
+
+- Escalating past Semgrep, CodeQL suite discipline, SARIF severity resolution → `source-audit`
+- Turning one confirmed bug into a rule for its whole pattern family (abstraction ladder) → `variant-analysis`
+- Refuting a hit before it enters a report → `false-positive-refutation`
+- Per-CWE vulnerable/secure examples to build test cases from → `code-security`
+- Language-specific class semantics the rule should encode → `c-cpp-review`, `rust-security-audit`
+- Encoding a CVE's root cause as a regression rule → `cve-patch-analysis`
 
 ---
 

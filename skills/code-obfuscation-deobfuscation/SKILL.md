@@ -1,6 +1,6 @@
 ---
 name: code-obfuscation-deobfuscation
-description: Recognising and undoing code obfuscation and packing in native binaries. Use when a binary is packed, its decompilation is unreadable, or strings and imports are absent — UPX and custom packers, OEP finding and dumping with import reconstruction, control-flow flattening, opaque predicates, mixed boolean arithmetic (MBA), junk and dead code, instruction substitution, string and API-name encryption, and self-modifying code. Covers picking a deobfuscation method (pattern rewriting, symbolic simplification, emulation, compiler-IR lifting) and recognising when the protection is a VM.
+description: Recognising and undoing code obfuscation and packing in native binaries. Use when a binary is packed, its decompilation is unreadable, or strings and imports are absent — UPX and custom packers, OEP finding and import reconstruction, control-flow flattening, opaque predicates, MBA, string encryption, self-modifying code.
 ---
 
 # SKILL: Obfuscation & Deobfuscation

@@ -1,6 +1,6 @@
 ---
 name: dynamic-verification
-description: Debugger command reference and crash triage workflows for runtime vulnerability verification. Use when debugging binaries, analyzing crashes (SIGSEGV/SIGABRT), triaging crash exploitability, tracing input through a program, proving UAF/double-free, bypassing anti-debug, or verifying static-analysis hypotheses at runtime with GDB, LLDB, pwndbg/gef/PEDA, or the rizin/radare2 debugger. Covers GDB↔LLDB syntax mapping, plugin-only commands, breakpoint recipes, stack overflow offset discovery, and crash classification.
+description: Debugger command reference and crash triage for runtime verification with GDB, LLDB, pwndbg/gef/PEDA, or the rizin/radare2 debugger. Use when debugging a binary, analyzing a SIGSEGV or SIGABRT, triaging crash exploitability, tracing input through a program, proving a UAF, or confirming a static hypothesis at runtime.
 ---
 
 # SKILL: Dynamic Verification & Crash Triage

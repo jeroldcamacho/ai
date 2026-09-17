@@ -1,6 +1,6 @@
 ---
 name: sandbox-escape-techniques
-description: Escaping process sandboxes and containers. Use after achieving code execution inside a confined process and needing to reach the host — Chrome renderer-to-browser via Mojo IPC, seccomp-bpf filter analysis and bypass (io_uring, ptrace, x32 ABI, fd passing), Linux namespace and capability escapes, Docker/Kubernetes container breakout, macOS sandbox profiles and XPC service abuse, Windows token/integrity-level and Win32k lockdown, Electron and Node contextIsolation failures, writable policy files, and kernel LPE as the universal escape. Covers enumerating what the sandbox actually permits before choosing a technique.
+description: Escaping process sandboxes and containers. Use after achieving code execution inside a confined process and needing the host — Chrome renderer-to-browser via Mojo, seccomp-bpf analysis and bypass, Linux namespace and capability escapes, Docker and Kubernetes breakout, macOS sandbox and XPC, Windows token and integrity levels, Electron contextIsolation, kernel LPE as the universal escape.
 ---
 
 # SKILL: Sandbox & Container Escape

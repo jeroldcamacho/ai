@@ -1,6 +1,6 @@
 ---
 name: binary-protection-bypass
-description: Exploit mitigation assessment and bypass. Use when deciding what an exploit needs before building it, or when a working primitive is blocked by a defence — ASLR, PIE, NX/DEP, stack canary, RELRO, FORTIFY_SOURCE, CET (IBT + shadow stack), Clang CFI, Windows CFG/ACG/CIG, ARM PAC and MTE, glibc pointer mangling and safe-linking. Covers info-leak taxonomy and how to turn each leak into a base address, partial overwrite, brute force against forking servers, GOT dereference, and reading mitigation state with checksec/readelf/dumpbin.
+description: Exploit mitigation assessment and bypass — ASLR, PIE, NX, canary, RELRO, FORTIFY_SOURCE, CET, CFI, Windows CFG/ACG, ARM PAC and MTE, safe-linking. Use when deciding what an exploit needs before building it, when a primitive is blocked by a defence, or when verifying which hardening flags actually shipped in a binary.
 ---
 
 # SKILL: Binary Protection Bypass
@@ -61,6 +61,49 @@ Windows: `dumpbin /headers app.exe` → `NX compatible`, `Dynamic base`, `Guard`
 | **glibc PTR_MANGLE** | Forged `atexit`/`jmp_buf` pointers | Leak `fs:[0x30]` guard, or overwrite it with 0 |
 | **glibc Safe-Linking** | Blind tcache/fastbin poisoning | Heap leak → derive the key (`heap-exploitation`) |
 | **Seccomp** | `execve` | ORW chain; check the filter first, always |
+
+## Verifying Hardening Actually Shipped
+
+Two different questions, and a build that answers the first can still fail the second:
+
+1. **Was the flag passed?** Read the build files.
+2. **Did it reach the shipped artifact?** Read the binary.
+
+**The interesting failure is not an absent flag but a silently misspelled one.** A typo in a `-D`
+or `-f` flag is accepted without warning, so the mitigation is simply off while the build log looks
+hardened. Real examples worth grepping for by shape, not by exact spelling:
+
+```bash
+# In the build system — look for near-misses, not just the correct spelling
+rg -n '_FORTIFY|stack-protector|relro|_GLIBCXX_ASSERT|_LIBCPP_|-fPIE|-fcf-protection|-Wl,-z'    -g 'Makefile*' -g '*.mk' -g '*.cmake' -g 'CMakeLists.txt' -g 'meson.build' -g 'configure*' -g '*.bazel'
+# then eyeball for: _FORTIFY_SORUCE, -fstack-protector-stong, _GLIBCXX_ASSERTONS,
+# -fcf-protecton, -Wl,-z,relro,now missing the `now`, -D_FORTIFY_SOURCE with no -O
+```
+
+Three further ways a flag is present but inert:
+
+- **`_FORTIFY_SOURCE` requires optimization.** At `-O0` it does nothing, silently. A debug build
+  is not a hardened build.
+- **The flag reached a test or sample target, not the shipped one.** Check which target the
+  variable is actually attached to, not just that it appears in the file.
+- **A later flag overrode it** — `-fno-stack-protector` after `-fstack-protector-strong`, or a
+  distro's default `CFLAGS` being replaced rather than appended to.
+
+Then confirm on the artifact, which is the only claim that matters:
+
+```bash
+checksec --file=./binary                    # RELRO, canary, NX, PIE, RPATH, symbols, FORTIFY count
+readelf -d ./binary | rg 'BIND_NOW|FLAGS'   # Full RELRO needs both BIND_NOW and GNU_RELRO
+readelf -lW ./binary | rg 'GNU_STACK'       # RW without E = NX on
+readelf -hW ./binary | rg 'Type:'           # DYN = PIE, EXEC = no PIE
+rg -a '__stack_chk_fail|__memcpy_chk|__sprintf_chk' <(nm -D ./binary 2>/dev/null; strings -a ./binary)
+readelf -nW ./binary | rg -i 'property|IBT|SHSTK'   # CET markings
+```
+
+`checksec` reporting `FORTIFY_SOURCE: Yes` plus a *count* of fortified functions is the useful
+signal — `Yes` with 0 fortified calls means the macro was defined and nothing used it. And a
+canary reported present only proves *some* function has one; a leaf function with no arrays is
+omitted by design, so a canary-present binary can still have unprotected frames.
 
 ## Info Leak Taxonomy
 

@@ -1,6 +1,6 @@
 ---
 name: llm-security
-description: "Security guidelines for LLM applications based on OWASP Top 10 for LLM 2025. Use when building LLM apps, reviewing AI security, implementing RAG systems, or asking about LLM vulnerabilities like 'prompt injection' or 'check LLM security'. IMPORTANT: Always consult this skill when building chatbots, AI agents, RAG pipelines, tool-using LLMs, agentic systems, or any application that calls an LLM API (OpenAI, Anthropic, Gemini, etc.) — even if the user doesn't explicitly mention security. Also use when users import 'openai', 'anthropic', 'langchain', 'llamaindex', or similar LLM libraries."
+description: LLM application security per the OWASP Top 10 for LLM 2025. IMPORTANT: consult whenever building or reviewing chatbots, AI agents, RAG pipelines, tool-using LLMs, agentic systems, or anything calling an LLM API — even if security is not mentioned. Also when code imports openai, anthropic, langchain or llamaindex, or on any prompt-injection question.
 ---
 
 # LLM Security Guidelines (OWASP Top 10 for LLM 2025)

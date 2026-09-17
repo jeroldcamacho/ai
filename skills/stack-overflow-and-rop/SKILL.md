@@ -1,6 +1,6 @@
 ---
 name: stack-overflow-and-rop
-description: Stack overflow to control-flow-hijack playbook for Linux userland. Use when exploiting a stack buffer overflow — offset discovery, saved-return-address overwrite, ret2win, ret2shellcode, ret2libc, ROP chain construction, ret2csu, ret2dlresolve, SROP, stack pivoting, canary leak/brute-force — or when a ROP chain crashes and you need failure triage. Covers glibc 2.34+ changes that break classic __libc_csu_init and __malloc_hook techniques, x86/x86-64/ARM/MIPS differences, and local-vs-remote parity.
+description: Stack overflow to control-flow hijack for Linux userland. Use when exploiting a stack buffer overflow — offset discovery, saved-return-address overwrite, ret2win, ret2shellcode, ret2libc, ROP chains, ret2csu, ret2dlresolve, SROP, stack pivoting, canary leak or brute force — or when a ROP chain crashes and you need failure triage. Covers glibc 2.34+ changes and cross-architecture differences.
 ---
 
 # SKILL: Stack Overflow & ROP

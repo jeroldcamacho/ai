@@ -1,6 +1,6 @@
 ---
 name: symbolic-execution-tools
-description: Symbolic and concolic execution for reverse engineering and vulnerability research. Use when a question is computational rather than readable — solving a licence check or keygen, finding input that reaches a target address, recovering a next-state expression from obfuscated code, or proving a branch unreachable — with angr, claripy, z3, Triton, or Manticore. Covers when symbolic execution is the wrong tool, controlling path explosion with hooks, SimProcedures, veritesting and state pruning, symbolising only the bytes that matter, and reading unsat/timeout results correctly.
+description: Symbolic and concolic execution with angr, claripy, z3, Triton or Manticore. Use when the question is computational rather than readable — solving a licence check or keygen, finding input that reaches a target address, recovering a next-state expression from obfuscated code, proving a branch unreachable. Covers path-explosion control, hooks and SimProcedures, and reading unsat and timeout results correctly.
 ---
 
 # SKILL: Symbolic Execution

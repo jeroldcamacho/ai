@@ -1,6 +1,6 @@
 ---
 name: anti-debugging-techniques
-description: Detecting and defeating anti-debugging, anti-instrumentation, and anti-VM checks in binaries. Use when a target crashes, exits, hangs, or silently changes behaviour under a debugger — ptrace self-attach, /proc TracerPid, rdtsc and clock timing, int3 and code-checksum scanning, hardware-breakpoint (DR register) detection, SIGTRAP handler tricks, Windows PEB/NtQueryInformationProcess/ThreadHideFromDebugger, CPUID hypervisor and sandbox artefact checks, and Frida/instrumentation detection. Covers locating the check, then choosing between patching, LD_PRELOAD stubs, debugger-side spoofing, and emulation.
+description: Detecting and defeating anti-debugging, anti-instrumentation, and anti-VM checks. Use when a target crashes, exits, hangs, or silently changes behaviour under a debugger, or when Frida is detected. Covers locating the check, then choosing between patching, LD_PRELOAD stubs, debugger-side spoofing, and emulation.
 ---
 
 # SKILL: Anti-Debugging Detection & Bypass

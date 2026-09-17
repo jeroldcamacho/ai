@@ -1,6 +1,6 @@
 ---
 name: reverse-shell-techniques
-description: Reverse and bind shell establishment during authorized penetration tests. Use after achieving command execution on a target and needing an interactive session — language one-liners, encrypted shells via OpenSSL/socat/ncat, web shells for PHP/ASPX/JSP, PTY stabilisation, file transfer onto the target, PowerShell shells and download cradles, egress-restricted alternatives, and cleanup of artefacts left behind.
+description: Reverse and bind shell establishment during authorized testing. Use after achieving command execution and needing an interactive session — language one-liners, encrypted shells via OpenSSL/socat/ncat, web shells, PTY stabilisation, file transfer onto the target, PowerShell cradles, egress-restricted alternatives, and cleanup of artefacts.
 ---
 
 # SKILL: Reverse Shells
