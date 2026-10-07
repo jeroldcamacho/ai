@@ -46,14 +46,32 @@ Work down this table; the first row whose preconditions you meet is almost alway
 | **Kernel: `modprobe_path`, `core_pattern`** | Kernel write primitive | Execute an unknown-format binary / crash | See `kernel-exploitation` |
 | **Data-only** (uid, auth flag, path, size field) | Know the variable | Normal program flow | Most reliable; CFI-proof |
 
-### The hooks are gone — check first
+### The hooks are gone — and the obvious check does not detect it
 
-```python
-libc = ELF('./libc.so.6')
-'__free_hook' in libc.sym            # False on glibc >= 2.34
+**Do not probe for the symbol. Gate on the glibc version.** glibc 2.34 stopped *calling* `__malloc_hook`, `__free_hook`, `__realloc_hook` and `__memalign_hook`, but **kept the symbols** as versioned weak compat objects for ABI stability. They are still in `.dynsym`, still have addresses, and still point at writable libc memory — so a symbol-presence check reports success on a system where the technique is dead.
+
+Measured on glibc 2.41 (Debian 13):
+
+```
+__free_hook    in libc.sym: True   @ 0x1ec1e8      <- pwntools says present
+__malloc_hook  in libc.sym: True   @ 0x1ec1e0
+readelf --dyn-syms: __free_hook@GLIBC_2.2.5  WEAK  OBJECT   <- retained compat symbol
 ```
 
-glibc 2.34 stopped calling `__malloc_hook`, `__free_hook`, `__realloc_hook`, and `__memalign_hook`. On Ubuntu 22.04+, Debian 12+, Fedora 35+, writing `system` there succeeds and then does **nothing**. Every "heap exploitation tutorial" ending in `__free_hook` is pre-2.34. Confirm the version (`heap-exploitation` has the version-gate table) before planning around them.
+So `'__free_hook' in libc.sym` is **`True` on a modern system and tells you nothing.** An agent trusting it writes `system` to the hook, sees the write succeed, and gets no execution — the worst kind of failure, because it looks verified.
+
+Gate on the version instead:
+
+```bash
+strings -a libc.so.6 | grep -m1 'GNU C Library'      # "...stable release version 2.41."
+readelf -V libc.so.6 | grep -oE 'GLIBC_2\.[0-9]+' | sort -t. -k2 -n | tail -1   # GLIBC_2.41
+```
+
+(pwntools' `ELF` has no `libc_version` attribute — verified absent; use one of the above.)
+
+**>= 2.34: hooks are dead.** Ubuntu 22.04+, Debian 12+, Fedora 35+ and everything newer. Every heap tutorial ending in `__free_hook` is pre-2.34 — go to FSOP, `__exit_funcs`, or a GOT/`.fini_array` target below.
+
+One residual use: the hook addresses are still **writable libc memory at a known offset**, which makes them a serviceable scratch buffer for a *different* primitive (somewhere to stage a string or a fake struct). Just never as a code-execution hook.
 
 ## GOT Overwrite
 
@@ -187,11 +205,11 @@ If the program only ever `_exit()`s or crashes, exit-handler targets are unreach
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Write succeeds, nothing happens | Target never triggered, or hooks removed (glibc ≥ 2.34) | Check the trigger inventory; check `libc.sym` |
+| Write succeeds, nothing happens | Target never triggered, or hooks removed (glibc >= 2.34) | Check the trigger inventory; check `libc.sym` |
 | SIGSEGV writing to the GOT | Full RELRO | Switch to FSOP / exit handlers / return address |
 | `Fatal error: glibc detected an invalid stdio handle` | Vtable outside `__libc_IO_vtables` | Use House of Apple 2 style — a legitimate vtable + controlled `_wide_data` |
 | Crash inside `__run_exit_handlers` | Pointer not mangled, or wrong `pointer_guard` | Leak `fs:[0x30]`, or zero the guard first |
-| `setcontext` loads garbage | Using the `rdi` variant on glibc ≥ 2.29 | It reads from **`rdx`**; verify the offset by disassembling |
+| `setcontext` loads garbage | Using the `rdi` variant on glibc >= 2.29 | It reads from **`rdx`**; verify the offset by disassembling |
 | Control-flow hijack faults immediately at the target | CET/IBT — target must start with `endbr64` | Pick an `endbr64`-prefixed entry, or go data-only (`binary-protection-bypass`) |
 | Works locally, fails remotely | libc version mismatch — every offset moves | Identify the remote libc from a leak and re-derive |
 | One-shot write, target needs two | Loop back to `main` via `.fini_array` first | Then take the writes you need |

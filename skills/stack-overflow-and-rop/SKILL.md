@@ -7,7 +7,11 @@ description: Stack overflow to control-flow hijack for Linux userland. Use when 
 
 Depth reference for stack-based control-flow hijack. Technique selection and the shared toolchain are `exploit-dev`; mitigation assessment and leak taxonomy are `binary-protection-bypass`; heap bugs are `heap-exploitation`; offset discovery and crash triage at runtime are `dynamic-verification`; bug class → primitive mapping is `bug-class-catalog`.
 
+**This skill is Linux/ELF-shaped** — glibc, `execve("/bin/sh")`, GDB. The mechanics carry to Windows; the specifics do not: there is no libc to return into, `/GS` is applied heuristically rather than to every frame, and x86 Windows has an extra hijack target Linux lacks — the SEH chain. On a PE target, read this for offset discovery, chain construction and pivoting, then `windows-exploitation` for SEH overwrite, `VirtualProtect` DEP bypass, non-`/DYNAMICBASE` gadget sourcing, and egg hunters.
+
 Use on targets you are authorized to attack — CTF, your own lab, or a scoped engagement.
+
+**Version ceiling: verified against glibc 2.41 (Debian 13).** The gates below (2.34 for `__libc_csu_init` and the hooks) still hold there. Anything newer than 2.41 is unverified — say so in the finding rather than implying it was checked.
 
 ## Discipline
 
@@ -162,7 +166,7 @@ pop rbx; pop rbp; pop r12; pop r13; pop r14; pop r15; ret
 
 Set `rbx=0`, `rbp=1` so the loop exits after one call. Pad **56 bytes** after the call gadget before your next return address.
 
-> **glibc ≥ 2.34 (Ubuntu 22.04+, Debian 12+) removed `__libc_csu_init`.** The gadget is gone. Check with `nm -C ./binary | grep csu` or `ROPgadget --binary ./binary | grep 'pop rbx'`. Replacements: `__libc_start_call_main` fragments, gadgets inside `ld.so`, or — most practically — leak libc first and take `pop rdx` from there. Otherwise use SROP.
+> **glibc >= 2.34 (Ubuntu 22.04+, Debian 12+) removed `__libc_csu_init`.** The gadget is gone. Check with `nm -C ./binary | grep csu` or `ROPgadget --binary ./binary | grep 'pop rbx'`. Replacements: `__libc_start_call_main` fragments, gadgets inside `ld.so`, or — most practically — leak libc first and take `pop rdx` from there. Otherwise use SROP.
 
 Verify the actual disassembly before using the offsets: some builds emit `call r12` rather than `call [r12+rbx*8]`, which changes what you put in `r12`.
 
@@ -252,7 +256,7 @@ A `fork` + `execve` server re-randomizes the canary per connection: brute-force 
 
 ## Write Targets When Full RELRO Blocks the GOT
 
-> **glibc ≥ 2.34 removed `__malloc_hook` / `__free_hook` / `__realloc_hook`.** They are no longer called. Chains that target them silently do nothing on modern systems — check `libc.symbols` before planning around them.
+> **glibc >= 2.34 stopped *calling* `__malloc_hook` / `__free_hook` / `__realloc_hook`.** The **symbols remain** as weak compat objects (verified present on 2.41), so a symbol-presence check reports success on a system where the technique is dead — gate on the glibc version string, not on `libc.sym`. Chains that target them silently do nothing on modern systems — check `libc.symbols` before planning around them.
 
 Current targets, in rough order of practicality:
 
@@ -279,7 +283,7 @@ Full target catalog — preconditions, triggers, FSOP/House-of-Apple mechanics, 
 | Works in GDB, fails outside | GDB changes env/argv, shifting stack addresses | Test with `env -i`; never hardcode a stack address seen only in GDB |
 | Everything is right, still no shell | Seccomp | `seccomp-tools dump`; switch to ORW |
 | one_gadget doesn't fire | Constraints unmet at the jump | Check them in GDB at that instruction; set `rdx`/`rcx` = 0 or use `system` |
-| ret2csu gadget not found | glibc ≥ 2.34 | Use libc gadgets after a leak, or SROP |
+| ret2csu gadget not found | glibc >= 2.34 | Use libc gadgets after a leak, or SROP |
 
 ## Advanced Techniques
 

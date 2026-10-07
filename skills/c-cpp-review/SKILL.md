@@ -90,7 +90,7 @@ invariant, and what makes a sighting a false positive.
 - **`string-bounds-and-termination`.** One bug with three faces. `malloc(strlen(s))` then `strcpy`
   writes one byte past the allocation — but only a bug when the destination is later used as a C
   string; a raw copy of exactly `strlen` bytes is fine. `strncpy` **does not NUL-terminate** when
-  the source is ≥ n bytes: look for the missing `buf[n-1] = 0`, and for that assignment existing
+  the source is >= n bytes: look for the missing `buf[n-1] = 0`, and for that assignment existing
   on only one branch. `strncat`'s third argument is **how many bytes to append**, not the
   destination size, and it always writes one more for the NUL — so `sizeof(dst)` is wrong by
   `strlen(dst)+1`, and that one is almost always a real overflow wherever it appears.
@@ -182,7 +182,7 @@ invariant, and what makes a sighting a false positive.
   pointer**, so `execl(path, arg, 0)` passes an `int` where a `char*` terminator is required — on
   LP64 that is 32 bits of zero followed by whatever is next. `0` in a *prototyped* pointer
   parameter is fine.
-- **`undefined-behavior` the optimizer can weaponize.** Shifts by a negative amount or by ≥ the
+- **`undefined-behavior` the optimizer can weaponize.** Shifts by a negative amount or by >= the
   promoted width; misaligned loads via a cast; strict-aliasing violations that are not `char*`,
   `memcpy` or a union; unsequenced modification of one object. What makes these *security* bugs is
   that the optimizer may assume they never happen and delete the surrounding check. So the

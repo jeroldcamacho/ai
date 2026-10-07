@@ -12,6 +12,66 @@ honest statement instead of a vacuous one.
 
 Both are evidence infrastructure. Neither finds bugs on its own.
 
+## Tier 0 — the binary you cannot rebuild
+
+**Everything below this section assumes you can compile the target.** On a stripped firmware binary, a vendor blob, or any closed-source executable you cannot — and ASan cannot be retrofitted, because redzones and shadow memory are placed at *compile time*. But you do not need ASan to make a heap bug fault; you need a **hostile allocator**, and those inject with `LD_PRELOAD`:
+
+```bash
+# AFL++'s libdislocator: every allocation at the END of a page, next page unmapped.
+# A one-byte overread past the end becomes an immediate SIGSEGV.
+# Verified present on this host at /usr/local/lib/afl/ (also in the build tree
+# at ~/Desktop/AFLplusplus/). Confirm with: ls /usr/local/lib/afl/lib*.so
+LD_PRELOAD=/usr/local/lib/afl/libdislocator.so ./sample input.bin
+
+# glibc: poison fresh and freed memory so UAF and uninitialised reads go wrong loudly.
+MALLOC_PERTURB_=165 MALLOC_CHECK_=3 ./sample input.bin
+```
+
+Two more AFL++ `LD_PRELOAD` libraries, both under-used and both diagnostic rather than detective:
+
+```bash
+# libtokencap: dump the string/byte constants the target compares against.
+# Feed straight to afl-fuzz -x as a dictionary.
+AFL_TOKEN_FILE=tokens.txt LD_PRELOAD=/usr/local/lib/afl/libtokencap.so ./sample input.bin
+
+# libcompcov: log the comparisons performed, so you can see WHICH check a stuck
+# fuzzer is failing instead of guessing.
+AFL_COMPCOV_LEVEL=2 LD_PRELOAD=/usr/local/lib/afl/libcompcov.so ./sample input.bin
+
+# QASan: heap checking under qemu-user, so it works on foreign-architecture
+# firmware. libqasan.so is present at the same prefix, and qemu-*-static is
+# installed here (aarch64, arm, mips, ...) — so this path is live for firmware.
+AFL_USE_QASAN=1 afl-fuzz -Q -i in -o out -- ./mips-binary @@
+```
+
+| Technique | Catches | Costs |
+|---|---|---|
+| `libdislocator` — page-per-allocation | heap OOB **read and write**, by one byte | ~nothing; changes heap layout, so layout-dependent bugs may hide |
+| `MALLOC_PERTURB_` / `MALLOC_CHECK_` | UAF, uninitialised use, some double frees | nothing; glibc only |
+| QASan (AFL++) | heap errors under `qemu-user` — **cross-architecture**, so it works on MIPS/ARM firmware | emulation overhead |
+| Valgrind memcheck | heap OOB, UAF, uninitialised reads, leaks | 10–50x; misses *stack* overflows — **and it is absent on this host** (see GINGER's tool inventory), so `libdislocator` and `MALLOC_PERTURB_` are the primary options here, with QASan for foreign architectures |
+| Windows page heap (`gflags /p`) | the same idea on PE targets | Windows only |
+
+**Why this tier earns its place:** the classes most often missed are OOB *reads* and use-after-frees that never fault under the system allocator. A page-per-allocation allocator turns both into a segfault for the cost of one environment variable. **Re-run the dynamic battery under a hostile allocator before concluding anything was clean** — a clean run under `libdislocator` is meaningfully better evidence than a clean run under the default allocator, and still not proof.
+
+**Verified on this host** — a 48-byte heap overflow (`p = malloc(16); memset(p,'A',64)`), which is silent by default and demonstrates the limit at the same time:
+
+```
+$ gcc -o t_dyn t.c ; gcc -static -o t_static t.c
+  t_dyn     plain exit=65   under libdislocator exit=139   <- SIGSEGV, bug made loud
+  t_static  plain exit=65   under libdislocator exit=65    <- silent: no loader, no interposition
+```
+
+The dynamic build faults immediately; the **static** build stays silent because it never consults the loader. That is the "dynamically linked only" limit below, and it is why `file` output belongs in the evidence chain next to any Tier 0 result.
+
+**Use the tools that exist; do not write your own allocator.** A hand-rolled `LD_PRELOAD` allocator must survive everything libc startup, stdio, and locale code do, and one that fires on a clean run is *worse than none* — you will learn to discard its output, true positives included.
+
+**Limits, stated honestly — check these before planning around Tier 0:**
+
+- **Heap only.** A stack overflow inside its own frame stays invisible, and so does every integer overflow. Those need `reading-decompiled-code` or a rebuilt harness.
+- **Dynamically linked only.** A **static** binary never consults the loader, so nothing is interposed and every technique here silently does nothing. `file` tells you — and "ran clean under libdislocator" on a static binary is a vacuous claim, not a clean result.
+- **You must be able to execute it.** With no `qemu-user` for the target architecture, this tier is unavailable and that belongs in the report's limitations, not in a coverage claim.
+
 ## Choosing a Sanitizer
 
 | Sanitizer | Finds | Cost | Notes |

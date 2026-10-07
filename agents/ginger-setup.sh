@@ -7,6 +7,9 @@
 #   ./ginger-setup.sh --yes              don't prompt before apt
 #   ./ginger-setup.sh --verify-tools     print the GINGER.md tool-inventory table
 #   ./ginger-setup.sh --verify-tools --write   regenerate that table in GINGER.md
+#   ./ginger-setup.sh --new-engagement NAME    scaffold the three ledger logs
+#   ./ginger-setup.sh --new-engagement=NAME    (same; both forms accepted)
+#                                        (omit NAME to use the current dir's name)
 #
 # Detection deliberately does NOT rely on `command -v` alone. GDB plugins are
 # sourced scripts that never appear on PATH, Ruby gem binaries live outside it,
@@ -19,15 +22,21 @@ VR="$HOME/.local/venvs/vr"          # angr/z3/lief live here; system python is P
 BIN="$HOME/.local/bin"
 GEMBIN=$(echo "$HOME"/.local/share/gem/ruby/*/bin 2>/dev/null | awk '{print $1}')
 
-MODE=install; WITH_OPTIONAL=0; ASSUME_YES=0; WRITE=0
+MODE=install; WITH_OPTIONAL=0; ASSUME_YES=0; WRITE=0; ENG=""; EXPECT_ENG=0
 for a in "$@"; do case "$a" in
   --check) MODE=check ;;
   --all)   WITH_OPTIONAL=1 ;;
   --yes|-y) ASSUME_YES=1 ;;
   --verify-tools) MODE=verify ;;
   --write) WRITE=1 ;;
-  --help|-h) sed -n '2,18p' "$0"; exit 0 ;;
-  *) echo "unknown option: $a (try --help)"; exit 2 ;;
+  --new-engagement=*) MODE=engagement; ENG="${a#*=}"; EXPECT_ENG=0 ;;
+  --new-engagement) MODE=engagement; EXPECT_ENG=1 ;;   # name may follow as a positional
+  --help|-h) sed -n '2,17p' "$0"; exit 0 ;;
+  -*) echo "unknown option: $a (try --help)"; exit 2 ;;
+  # bare `--new-engagement NAME`: GINGER.md documents the space-separated form, so
+  # accept it as well as `=NAME`. Anything else positional is still an error.
+  *) if [ "$EXPECT_ENG" = 1 ] && [ -z "$ENG" ]; then ENG="$a"; EXPECT_ENG=0
+     else echo "unexpected argument: $a (try --help)"; exit 2; fi ;;
 esac; done
 
 R=$'\e[31m'; G=$'\e[32m'; Y=$'\e[33m'; B=$'\e[1m'; D=$'\e[2m'; N=$'\e[0m'
@@ -37,6 +46,65 @@ miss(){ printf "  ${R}manual${N}  %s${D} — %s${N}\n" "$1" "$2"; }
 hdr(){ printf "\n${B}%s${N}\n" "$1"; }
 
 MISSING_MANUAL=()
+
+# ---------- --new-engagement: scaffold the ledger (Evidence Discipline rule 7) ----------
+# Three append-only logs, outside the target tree by construction. Never inside the
+# code under review: it pollutes a tree we don't own, and our own notes would enter
+# the corpus for every later rg sweep.
+if [ "$MODE" = engagement ]; then
+  [ -n "${ENG:-}" ] || ENG=$(basename "$PWD")
+  ENG=$(printf '%s' "$ENG" | tr -c 'A-Za-z0-9._-' '_')
+  DIR="$HOME/.claude/agents/workspace/$ENG"
+  hdr "New engagement: $ENG"
+  if [ -d "$DIR" ]; then
+    printf "  ${Y}exists${N}  %s ${D}— leaving it alone (logs are append-only)${N}\n" "$DIR"
+  else
+    mkdir -p "$DIR" || { echo "could not create $DIR"; exit 1; }
+    ok "created $DIR"
+  fi
+  TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  seed(){ # file, header block
+    if [ -e "$DIR/$1" ]; then printf "  ${D}kept${N}    %s\n" "$1"; return; fi
+    printf '%s\n' "$2" > "$DIR/$1"; ok "$1"
+  }
+  seed observations.md "# $ENG — observations (append-only log)
+#
+# O-nn  <address or file:line>  <raw fact>  [tool that produced it]
+#
+# Raw facts only, never conclusions. Always record the producing tool: Pseudo C,
+# MLIL SSA, Ghidra's decompiler and raw disassembly do not carry equal weight,
+# and recorded later that distinction is unrecoverable.
+# Opened $TS"
+  seed hypotheses.md "# $ENG — hypotheses (append-only log; the single candidate ledger)
+#
+# H-nn  <status>  <claim / evidence>  [refs]
+#   status: proposed -> testing -> confirmed | rejected
+#
+# Nothing is ever edited. State changes are NEW LINES, and the latest line for an
+# ID wins. IDs are permanent. Findings and rejections are VIEWS over this file --
+# do not split them into separate files. At write-up, fold the log (replay each ID
+# to its latest line), filter by status, and record the F-nn = H-nn mapping.
+#
+# H-01  proposed   <claim>   [from O-nn, <tool>]
+# H-01  rejected   <verdict sentence and why>
+# Opened $TS"
+  seed coverage.md "# $ENG — coverage (append-only log)
+#
+# E-nn  <status>  <entry point>  <reachability / review method>
+#   status: reviewed | not reviewed | out of scope   (keep these three distinct)
+#
+# One appended verdict per entry point; assembles into the report's entry-point
+# table at write-up. Never a bare percentage -- a coverage number needs its
+# denominator. 'blocked' subagent rows land here as 'not reviewed', never silence.
+# Opened $TS"
+  cat <<EOF
+
+  ${D}Ledger:${NO_COLOR:-$N}   $DIR
+  ${D}Append at the phase boundaries named in GINGER.md's Audit Methodology.${N}
+  ${D}Re-read all three before writing up; anything unbacked is a gap, not prose.${N}
+EOF
+  exit 0
+fi
 
 # ---------- detection ----------
 have(){                                   # binary, anywhere it could plausibly live
@@ -267,11 +335,11 @@ if [ "$MODE" = verify ]; then
     IFS='|' read -r st nm pth note <<<"$r"
     case "$st" in
       OK)
-        if [ -n "$note" ]; then FALLBACK="$FALLBACK \`$nm\` → \`${pth/#$HOME/~}\` ·"
+        if [ -n "$note" ]; then FALLBACK="$FALLBACK \`$nm\` → \`${pth/#$HOME/\~}\` ·"
         else
           d=$(dirname "$pth")
           case "$d" in /usr/bin|/usr/local/bin|/bin|/usr/sbin|/sbin) ;;
-            *) case " $PATHDIRS " in *" ${d/#$HOME/~} "*) ;; *) PATHDIRS="$PATHDIRS ${d/#$HOME/~}" ;; esac ;;
+            *) case " $PATHDIRS " in *" ${d/#$HOME/\~} "*) ;; *) PATHDIRS="$PATHDIRS ${d/#$HOME/\~}" ;; esac ;;
           esac
         fi ;;
       BROKEN) BROKENL="$BROKENL \`$nm\` (${note}) ·" ;;
@@ -307,6 +375,36 @@ if [ "$MODE" = verify ]; then
   else
     MIRI_CELL="unavailable — unsafe findings rest on the static-proof bar"
   fi
+
+  # objdump architecture support: a CAPABILITY false positive, not a presence one.
+  # An x86-only build emits no output AND no error on ARM/MIPS firmware, which is
+  # indistinguishable from a clean result. Probe it rather than trusting the name.
+  OBJD_CELL=""
+  if have objdump; then
+    OA=$(objdump --help 2>&1 | sed -n 's/^.*supported architectures: *//p' | head -1)
+    if [ -n "$OA" ] && ! printf '%s' "$OA" | grep -qiE 'aarch64|(^| )arm|mips|powerpc|riscv'; then
+      ALT=""
+      have rz-asm  && ALT="$ALT \`rz-asm -a arm -b 64 -d\`"
+      have rasm2   && ALT="$ALT \`rasm2 -a arm -b 64 -d\`"
+      python3 -c 'import capstone' 2>/dev/null && ALT="$ALT capstone in system python"
+      OBJD_CELL="\`objdump --help\` → \`$OA\` only. On ARM/AArch64/MIPS it emits **no output and no error** — indistinguishable from a clean result. Foreign-arch disassembly here:${ALT:- none found — install one}"
+    fi
+  fi
+
+  # AFL++ LD_PRELOAD libs (the no-rebuild sanitizer tier) + qemu-user for foreign arch
+  AFLLIB=""
+  for d in /usr/local/lib/afl "$HOME/Desktop/AFLplusplus" /usr/lib/afl; do
+    if [ -f "$d/libdislocator.so" ]; then
+      L=""; for l in libdislocator libtokencap libcompcov libqasan; do
+        [ -f "$d/$l.so" ] && L="$L \`$l.so\`"; done
+      QN=$(ls /usr/bin/qemu-*-static 2>/dev/null | wc -l)
+      QE=$(ls /usr/bin/qemu-*-static 2>/dev/null | sed 's|.*/qemu-||;s|-static||' \
+           | grep -xE 'aarch64|arm|mips|mipsel|mips64|riscv64|ppc' | tr '\n' ' ')
+      [ "$QN" -gt 0 ] && QE="${QE}(+$QN total)"
+      AFLLIB="${L# } at \`${d/#$HOME/\~}\`${QE:+; \`qemu-*-static\` for ${QE% }} — so the no-rebuild sanitizer tier is live (\`sanitizers-and-coverage\`)"
+      break
+    fi
+  done
   TABLE=$(cat <<TBL
 | Fact | Detail |
 |---|---|
@@ -314,9 +412,11 @@ if [ "$MODE" = verify ]; then
 | **installed but broken** — treat as missing | ${BROKENL:-none} |
 | **absent** | ${ABSENTL:-none} |
 | Python: system \`python3\` imports | ${SYSL:-—} |
-| Python: only in \`${VR/#$HOME/~}/bin/python3\` | ${VENVL:-—} |
+| Python: only in \`${VR/#$HOME/\~}/bin/python3\` | ${VENVL:-—} |
 | **runtime UB checking for \`unsafe\` Rust** | ${MIRI_CELL} |
-| **shadowed names** — \`command -v\` answers, but with the *other* implementation | ${SHADOWL:-none among the probed set} |
+| **shadowed names** — \`command -v\` answers, but with the *other* implementation | ${SHADOWL:-none among the probed set} |${OBJD_CELL:+
+| **capability false positive — \`objdump\` is x86-only here** | ${OBJD_CELL} |}${AFLLIB:+
+| **AFL++ \`LD_PRELOAD\` libs** | ${AFLLIB} |}
 | Non-standard dirs on PATH *in this shell* — may not be in others, so still check them | ${PATHDIRS:-—} |
 TBL
 )
@@ -466,9 +566,12 @@ have codeql       && ok "CodeQL"       || MISSING_MANUAL+=("CodeQL|github.com/gi
 have joern        && ok "joern"        || MISSING_MANUAL+=("joern|joern.io/installation")
 have psalm        && ok "psalm"        || MISSING_MANUAL+=("psalm|composer global require vimeo/psalm")
 have libc-identify && ok "libc-database" || MISSING_MANUAL+=("libc-database|github.com/niklasb/libc-database")
+[ -x /opt/binaryninja/binaryninja ] \
+  && ok "Binary Ninja $(/opt/binaryninja/binaryninja --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+[.0-9]*( [A-Za-z]+)?' | head -1) ${D}(default RE tool)${N}" \
+  || MISSING_MANUAL+=("Binary Ninja|binary.ninja — default RE tool; enable the built-in UI MCP server for mcp__binaryninja__bn_* tools")
 ls -d /opt/ghidra*/support/analyzeHeadless >/dev/null 2>&1 \
-  && ok "Ghidra $(ls -d /opt/ghidra_* 2>/dev/null | head -1 | grep -oE '[0-9.]+' | head -1)" \
-  || MISSING_MANUAL+=("Ghidra|ghidra-sre.org — plus the GhidraMCP plugin for mcp__ghidra__* tools")
+  && ok "Ghidra $(ls -d /opt/ghidra_* 2>/dev/null | head -1 | grep -oE '[0-9.]+' | head -1) ${D}(secondary)${N}" \
+  || MISSING_MANUAL+=("Ghidra|ghidra-sre.org — secondary RE tool; plus the GhidraMCP plugin for mcp__ghidra__* tools")
 if [ "$WITH_OPTIONAL" = 1 ]; then
   have pycdc          && ok "pycdc"          || MISSING_MANUAL+=("pycdc (optional)|github.com/zrax/pycdc — .pyc decompiler; python -m dis is the fallback")
   have sasquatch      && ok "sasquatch"      || MISSING_MANUAL+=("sasquatch (optional)|github.com/devttys0/sasquatch — vendor-modified SquashFS")
@@ -479,7 +582,14 @@ for e in "${MISSING_MANUAL[@]}"; do miss "${e%%|*}" "${e#*|}"; done
 
 # ---------- report ----------
 hdr "Summary"
-printf "  GhidraMCP bridge: "
+printf "  Binary Ninja MCP ${D}(default)${N}: "
+if curl -s -m 3 -o /dev/null -X POST http://127.0.0.1:24642/mcp \
+     -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+     -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"ginger-setup","version":"1"}}}' 2>/dev/null
+then printf "${G}listening on :24642${N}\n"
+else printf "${Y}not running${N} ${D}— start the Binary Ninja GUI with the built-in MCP server enabled${N}\n"; fi
+
+printf "  GhidraMCP bridge ${D}(secondary)${N}: "
 if curl -s -m 3 -o /dev/null http://127.0.0.1:8089/ 2>/dev/null; then printf "${G}listening on :8089${N}\n"
 else printf "${Y}not running${N} ${D}— start Ghidra with the GhidraMCP plugin${N}\n"; fi
 

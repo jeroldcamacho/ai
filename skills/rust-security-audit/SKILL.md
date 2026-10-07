@@ -231,7 +231,7 @@ against it.
   level.
 - **`CLOSUREFFI`** — a Rust closure registered as a C callback. A panic unwinding across
   `extern "C"` was UB before rustc 1.81 and is a process **abort** since (a *compiler* version
-  change, not an edition change — edition-2021 code on rustc ≥ 1.81 already aborts), which is
+  change, not an edition change — edition-2021 code on rustc >= 1.81 already aborts), which is
   still a server DoS. Two derivatives: captured `&'a T` outliving its scope when C invokes the
   callback later, and a `Box<dyn FnMut>` `into_raw`'d as user-data with no paired `from_raw` in
   the deregister path.

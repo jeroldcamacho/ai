@@ -9,6 +9,8 @@ The mitigation layer. Read this **before** choosing a technique — what is enab
 
 Use only on targets you are authorized to attack.
 
+**Version ceiling: verified against glibc 2.41 (Debian 13) and Linux 7.0.** Mitigation defaults move with the distro and the build, so read them off the actual target (`checksec`, `readelf -d`, `Get-ProcessMitigation`, `/proc/sys/...`) rather than trusting any table — including the ones below.
+
 ## Discipline
 
 **Enumerate mitigations first, from the actual binary and the actual host.** `checksec` describes the file; ASLR, `ptrace_scope`, and `mmap_min_addr` are properties of the *system* the target runs on, and remote hosts differ from your laptop.
@@ -114,7 +116,7 @@ Rank your candidate leaks by cost, not by how interesting they look.
 | Format string `%p` | Stack, libc, PIE, canary — all at once | Cheapest possible leak; see `format-string-exploitation` |
 | GOT read via `puts`/`write` | libc base | Entry must already be resolved; `write(1, got, 8)` is null-safe, `puts` is not |
 | Unsorted-bin `fd`/`bk` | libc base | `heap-exploitation` |
-| Freed tcache `next` (glibc ≥ 2.32) | Heap base | The safe-linking key *is* the leak |
+| Freed tcache `next` (glibc >= 2.32) | Heap base | The safe-linking key *is* the leak |
 | Uninitialised stack/heap read | Whatever was there — often a return address or a canary | Free of side effects; easy to miss |
 | OOB read on an array | Adjacent object pointers, vtables | Classic in parsers |
 | Verbose error messages / stack traces | Paths, addresses, versions | Cheap, non-crashing |

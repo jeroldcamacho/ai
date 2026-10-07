@@ -1,6 +1,6 @@
 ---
 name: re-tools
-description: Reverse engineering command reference for binary analysis. Use when reverse engineering a binary or firmware, disassembling, decompiling, doing binary triage, sink-first import sweeps, stripped-binary recovery, DWARF debug-info recovery, recovering bundled library versions, crypto constant identification, or binary diffing. Covers rizin/radare2 and Ghidra equivalents, and routes to the depth skill for each analysis obstacle.
+description: Reverse engineering command reference for binary analysis. Use when reverse engineering a binary or firmware, disassembling, decompiling, doing binary triage, sink-first import sweeps, stripped-binary recovery, DWARF debug-info recovery, recovering bundled library versions, crypto constant identification, or binary diffing. Covers rizin/radare2, Binary Ninja, and Ghidra equivalents, and routes to the depth skill for each analysis obstacle.
 ---
 
 # SKILL: Reverse Engineering Tools
@@ -9,26 +9,78 @@ Reference for binary RE workflows, tool syntax, and command equivalents.
 
 ## Tool Selection
 
-- **Ghidra** — via `ghidra-mcp` + HexStrike `ghidra_analysis`. Best for decompilation and large binaries.
+- **Binary Ninja — the default.** Via `binaryninja-mcp` (`mcp__binaryninja__bn_*`). Best decompilation, and the only tool here with a queryable IL stack (LLIL/MLIL/HLIL + SSA) — read MLIL SSA for backward taint. GUI must be running; no headless, no debugger, no bulk/batch tools.
+- **Ghidra — the secondary.** Via `ghidra-mcp` + HexStrike `ghidra_analysis`. Use it for what Binary Ninja's MCP lacks: bulk xrefs, batch decompilation, scripted dataflow, headless runs, and very large binaries.
 - **rizin/radare2** — same letter-command syntax; rizin is a fork. Use whichever is installed: `command -v rizin radare2`. Commands below apply to both; substitute `rizin`/`rz-bin`/`rz-asm`/`rzpipe` ↔ `radare2`/`rabin2`/`rasm2`/`r2pipe`.
-- **objdump** — fallback disassembly; no decompilation.
+- **objdump** — fallback disassembly; no decompilation. **On this host it is x86-only** (`objdump --help` → `supported architectures: i386 i386:x86-64 …`). On ARM/AArch64/MIPS firmware it emits **no output and no error**, which reads like "nothing there" — verify with `objdump --help` before trusting a quiet result. Foreign-arch fallback here is `rz-asm -a arm -b 64 -d` / `rizin -a <arch> -b <bits>` or capstone in system python (both verified working); `llvm-objdump` is installed but rejects GNU's `-b binary`.
+- **Specialist tools — verified availability on this host, per GINGER's detect-before-assume rule.** **Present**: `binwalk` (firmware carving), `ikdasm` (.NET IL), `qemu-*-static` (foreign-arch emulation, aarch64/arm/mips/… installed), AFL++ at `/usr/local/bin` with its `LD_PRELOAD` libs at `/usr/local/lib/afl/`. **Absent — install before planning around them, do not assume**: `qiling` (emulate firmware with a faked filesystem/syscall layer — invaluable for MIPS/ARM services, but a wrong environment model produces confident nonsense) · `floss` (recovers *obfuscated*/stack-constructed strings `strings` misses) · `diffoscope` (recursive diff of two builds/firmware images) · `radamsa` (dumb mutation fuzzer for a first pass) · `retdec` (third decompiler opinion when Binary Ninja and Ghidra disagree) · `GoReSym` (names from a stripped Go binary) · `hexyl` (use `xxd` instead). Re-check with `command -v`; availability drifts.
 - **HexStrike wrappers** — `gdb_analyze`, `gdb_peda_debug`, `radare2_analyze`, `objdump_analyze` execute CLI tools non-interactively with logging; pass command batches, not interactive sessions.
 
 ## Syntax Discipline
 
-**rizin/radare2 commands only work inside rizin/radare2.** They are not valid in Ghidra.
+**rizin/radare2 commands only work inside rizin/radare2.** They are not valid in Binary Ninja or Ghidra — those take named MCP tools:
 
-When using Ghidra via `ghidra-mcp`, use its named tools:
+| rizin/radare2 | Binary Ninja MCP (default) | Ghidra MCP (secondary) |
+|---|---|---|
+| `axt @ sym.imp.X` | `bn_function_callers` (callsites) / `bn_function_xrefs_to` | `search_functions` + `get_xrefs_to` on the import thunk |
+| `axt @ <data addr>` | `bn_data_xrefs_to` | `get_xrefs_to` |
+| `afn name @ addr` | `bn_symbol_rename` | `rename_function_by_address` |
+| `pdg @ addr` | `bn_function_decompile` | `decompile_function` |
+| `pdf @ addr` | `bn_function_disassembly` | `disassemble_function` |
+| *(no equivalent)* | `bn_function_il` — `mlil` + `ssa` for taint | *(no equivalent)* |
+| `afl` | `bn_function_list` / `bn_function_search` | `list_functions` |
+| `izz` | `bn_string_list` | `list_strings` / `search_strings` |
+| `ii` | `bn_import_list` | `list_imports` |
+| `afvs` | `bn_function_stack_layout` | the `data` group |
+| *(N calls)* | *(no bulk tool — one call per function)* | `get_bulk_xrefs`, `batch_decompile` |
 
-| rizin/radare2 | Ghidra MCP equivalent |
-|---|---|
-| `axt @ sym.imp.X` | `search_functions` + `get_xrefs_to` on the import thunk |
-| `afn name @ addr` | `rename_function_by_address` |
-| `pdg @ addr` | `decompile_function` |
-| `afl` | `list_functions` |
-| `izz` | `list_strings` / `search_strings` |
+Binary Ninja `function` arguments take a start-address expression: hex (`0x401000`), a symbol, or a BN expression.
 
 **`pdg` requires the rz-ghidra (rizin) or r2ghidra (radare2) plugin.** Without it, fall back to `pdc` (rizin) or `pdd` (radare2).
+
+## Identify First — container, then language
+
+Both of these decide *which* methodology applies, and getting either wrong wastes the whole engagement. Run before any analysis command.
+
+### Container magic — note the ones NOT at offset 0
+
+```bash
+file "$F"; binwalk "$F"; xxd -l 128 "$F"   # hexyl is not installed here; xxd is
+```
+
+| Bytes | Format | Offset |
+|---|---|---|
+| `7F 45 4C 46` (`\x7FELF`) | ELF | 0 |
+| `4D 5A` (`MZ`) | PE / DOS | 0, real PE header at the `e_lfanew` offset |
+| `FE ED FA CE` / `CF` | Mach-O 32 / 64-bit | 0 |
+| `CA FE BA BE` | Mach-O **fat** — also Java `.class` | 0 |
+| `50 4B 03 04` (`PK`) | ZIP — **and** jar/apk/docx/xlsx | 0 |
+| `1F 8B 08` · `42 5A 68` · `FD 37 7A 58 5A` · `28 B5 2F FD` | gzip · bzip2 · xz · zstd | 0 |
+| `hsqs` / `sqsh` | **SquashFS** (LE / BE) | 0 |
+| `UBI#` | **UBIFS** | 0 |
+| `75 73 74 61 72` (`ustar`) | tar | **257** |
+| `43 44 30 30 31` (`CD001`) | ISO 9660 | **32769** |
+| `\0asm` | WebAssembly | 0 |
+
+A magic match at a non-zero offset is why a bare `file` on a firmware image says `data`. That is not "unknown format" — it is "look further in".
+
+### Language tells — do not carry the C checklist onto a Go or Rust binary
+
+Identify from `.comment`, runtime symbols, or panic strings. **This is the highest-leverage early decision**: run a memory-safety checklist over a Go or Rust binary and you will find nothing while missing the logic and concurrency bugs that are actually there.
+
+| Language | Tells | What actually goes wrong |
+|---|---|---|
+| **Go** | `go.buildid`, `runtime.` symbols, huge static binary | data races, nil-map writes, `unsafe`, integer overflow in `make()` sizes, path handling. Memory safety is mostly *not* the seam. `GoReSym` recovers names |
+| **Rust** | `_ZN` mangling, `core::panicking`, `unwrap` strings | `unsafe` blocks, FFI boundaries, release-build integer wrap, logic, deserialisation → `rust-security-audit` |
+| **C++** | vtables, RTTI, `_ZNSt`, STL patterns | lifetime UAF, vtable corruption, iterator invalidation, exception paths |
+| **Swift/ObjC** | `_$s` mangling, `objc_msgSend` | force-unwrap, ObjC bridging, IPC entitlements → `pe-and-macho-analysis` |
+| **JVM** | `.class` / dex | deserialisation, reflection, traversal, injection — **not** memory safety. Decompiles near-perfectly: use a decompiler, not a disassembler |
+| **.NET** | `MZ` + CLR header, `mscoree`, `#~` metadata stream | near-perfect decompilation (ILSpy/dnSpy/`ikdasm`); deserialisation, reflection, P-Invoke, secrets in IL literals |
+| **Python (frozen)** | PyInstaller/`py2exe` markers, `PYZ`/`MEIPASS`, embedded zip | not a native RE problem — extract the archive, decompile the `.pyc`, read the source |
+| **Node / Electron** | `app.asar`, V8 `.jsc` snapshots | unpack the asar and read the JS; the native seam is addons and IPC |
+| **WebAssembly** | `\0asm` | linear-memory bounds are enforced, so overflows corrupt *within* the sandbox; the seams are host imports and integer arithmetic |
+
+Managed bytecode depth → `vm-and-bytecode-reverse`.
 
 ## Standard Analysis Sequence
 
