@@ -140,7 +140,7 @@ is the single most common reason a variant hunt finds nothing.**
 
 Tool loyalty is an anti-pattern. "I only use CodeQL" costs you the fast passes that tell you where
 to aim it. Verified installed here: `rg`, `weggli`, `semgrep`, `joern`, and `codeql` at
-`~/codeql/codeql/codeql` (not on `PATH` — invoke it by full path or check for it there before
+`/opt/tools/codeql/codeql` (not on `PATH` — invoke it by full path or check for it there before
 concluding it is missing).
 
 ```bash

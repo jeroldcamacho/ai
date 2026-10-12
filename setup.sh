@@ -108,6 +108,23 @@ esac
 # Tier selector: everything below is tagged with the agent that actually uses it.
 want(){ [ "${AGENT:-all}" = all ] || [ "${AGENT:-all}" = "$1" ]; }
 
+# Where the agent files and the skills live, relative to wherever this script is.
+# Two layouts are supported and both must find their OWN trees:
+#   repo checkout   <repo>/setup.sh   with <repo>/agents and <repo>/skills
+#   installed       ~/.claude/agents/setup.sh   with ~/.claude/skills
+# A clone that audited the installed tree would pass while its own copies were
+# broken, so the checkout case is tested first.
+SELF_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")"
+if   [ -d "$SELF_DIR/agents" ] && [ -d "$SELF_DIR/skills" ]; then
+  AGENTS_DIR="$SELF_DIR/agents";          SKILLS_DIR="$SELF_DIR/skills"
+elif [ "$SELF_DIR" = "$HOME/.claude/agents" ] && [ -d "$HOME/.claude/skills" ]; then
+  AGENTS_DIR="$SELF_DIR";                 SKILLS_DIR="$HOME/.claude/skills"
+elif [ -d "$SELF_DIR/../skills" ]; then
+  AGENTS_DIR="$SELF_DIR";                 SKILLS_DIR="$(readlink -f "$SELF_DIR/../skills")"
+else
+  AGENTS_DIR="$SELF_DIR";                 SKILLS_DIR="${HOME}/.claude/skills"
+fi
+
 # --selftest re-execs this script once per documented invocation with this set,
 # to ask "would these flags be accepted?" without running the mode. Everything
 # above here is argument handling; everything below does work.
@@ -357,7 +374,7 @@ INVENTORY=(
   "gosec|--version|"         "govulncheck|-version|"   "osv-scanner|--version|"
   "patchelf|--version|"
   # explicit-hint installs
-  "codeql|--version|$HOME/codeql/codeql/codeql"
+  "codeql|--version|/opt/tools/codeql/codeql"
   "rustup|--version|$HOME/.cargo/bin/rustup"
   "psalm|--version|"
   # notable absences worth asserting rather than assuming
@@ -449,23 +466,7 @@ APT_MOBILE=( adb apksigner zipalign libimobiledevice-utils ideviceinstaller
 
 if [ "$MODE" = selftest ]; then
   hdr "Self-test — documented invocations"
-  ROOT="$(dirname "$(readlink -f "$0")")"
-  # Installed layout is the primary one: the agents go to ~/.claude/agents and the
-  # skills to ~/.claude/skills, so that is what a deployed copy audits. A git
-  # checkout has the same shape one level up (repo/agents, repo/skills), and there
-  # the script must audit the REPO's skills, not the installed ones -- otherwise a
-  # clone reports on a tree it does not contain. Both resolve to "../skills"; the
-  # explicit $HOME case is kept so the deployed path is obvious and survives a
-  # symlinked or relocated script.
-  if   [ "$ROOT" = "$HOME/.claude/agents" ] && [ -d "$HOME/.claude/skills" ]; then
-    SKILLS="$HOME/.claude/skills"
-  elif [ -d "$ROOT/../skills" ]; then
-    SKILLS="$(readlink -f "$ROOT/../skills")"
-  elif [ -d "$HOME/.claude/skills" ]; then
-    SKILLS="$HOME/.claude/skills"
-  else
-    SKILLS="$ROOT"
-  fi
+  ROOT="$AGENTS_DIR"; SKILLS="$SKILLS_DIR"
   # Match on the script's OWN name, never a hardcoded one -- this file has been
   # renamed twice already, and a self-test that greps for the old name passes by
   # finding nothing. The dot needs escaping or `setup.sh` also matches `setupXsh`.
@@ -819,9 +820,9 @@ TBL
   # --write regenerates the inventory inside the selected agent's own document.
   # With --agent=all there are two candidates and no basis to choose, so it asks.
   case "$AGENT" in
-    ginger) GMD="$(dirname "$(readlink -f "$0")")/GINGER.md" ;;
-    alpha)  GMD="$(dirname "$(readlink -f "$0")")/ALPHA.md" ;;
-    *)      GMD="$(dirname "$(readlink -f "$0")")/GINGER.md"
+    ginger) GMD="$AGENTS_DIR/GINGER.md" ;;
+    alpha)  GMD="$AGENTS_DIR/ALPHA.md" ;;
+    *)      GMD="$AGENTS_DIR/GINGER.md"
             [ "$WRITE" = 1 ] && printf "\n  ${Y}--agent not given; writing GINGER.md${N} ${D}— pass --agent=alpha for ALPHA.md${N}\n" ;;
   esac
   B='<!-- BEGIN:tool-inventory -->'; E='<!-- END:tool-inventory -->'

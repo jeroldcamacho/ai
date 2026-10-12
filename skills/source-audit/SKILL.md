@@ -99,16 +99,18 @@ weggli '$fn(_);' -R '$fn=^(system|popen|execl|execlp)$' ./src    # exec sinks by
 
 ### CodeQL — interprocedural proof
 
-`codeql` is installed at **`~/codeql/codeql/codeql`** and is *not* on `PATH` — invoke it by full
-path, or check for it there before concluding it is missing.
+`codeql` is installed at **`/opt/tools/codeql/codeql`** and is *not* on `PATH` — invoke it by full
+path, or check for it there before concluding it is missing. `./setup.sh --agent=ginger
+--verify-tools` resolves it and prints the path it found, which is the answer that is current.
 
-**The CLI being installed does not mean the queries are.** Verified here: only `javascript-*` packs
-are present, so a C/C++ run dies with `The QL pack 'codeql/cpp-queries' ... cannot be found` —
-*after* you have paid for the database build. Check the packs **first**, and download the ones you
-need (network required):
+**The CLI being installed does not mean the queries are.** Verified here: **no query packs are
+installed at all** — `resolve packs` returns only `legacy-upgrades`, and `~/.codeql/packages/`
+does not exist. A run in any language dies with `The QL pack 'codeql/<lang>-queries' ... cannot be
+found` — *after* you have paid for the database build. Check the packs **first**, and download the
+ones you need (network required):
 
 ```bash
-CQL=~/codeql/codeql/codeql
+CQL=/opt/tools/codeql/codeql
 $CQL resolve packs 2>&1 | rg -i 'queries'      # what is actually available
 ls ~/.codeql/packages/codeql                    # per-language packs on disk
 $CQL pack download codeql/cpp-queries           # then the language you need
@@ -116,7 +118,7 @@ $CQL pack download trailofbits/cpp-queries      # extra coverage the stock suite
 ```
 
 ```bash
-CQL=~/codeql/codeql/codeql
+CQL=/opt/tools/codeql/codeql
 $CQL database create db --language=cpp --command="make -j$(nproc)"
 $CQL database create db --language=python --source-root .          # no build needed
 $CQL database analyze db suite.qls --format=sarif-latest --output=results.sarif
