@@ -12,14 +12,14 @@ Claude Code reads agents from `~/.claude/agents/` and skills from `~/.claude/ski
 ```sh
 git clone https://github.com/jeroldcamacho/ai && cd ai
 mkdir -p ~/.claude/agents ~/.claude/skills
-cp agents/GINGER.md agents/ALPHA.md setup.sh ~/.claude/agents/
-cp -r skills/* ~/.claude/skills/
-chmod +x ~/.claude/agents/setup.sh
+cp agents/*.md ~/.claude/agents/
+cp -r skills/*  ~/.claude/skills/
+cp setup.sh     ~/.claude/ && chmod +x ~/.claude/setup.sh
 
-~/.claude/agents/setup.sh --agent=ginger --install-deps   # or --agent=alpha
+~/.claude/setup.sh --agent=ginger --install-deps   # or --agent=alpha
 ```
 
-The agents appear as `ginger` and `alpha` on the next Claude Code start. `setup.sh` finds the agents and skills relative to itself, so it runs from either the repo root or `~/.claude/agents/`.
+`setup.sh` sits one level above `agents/` and `skills/` in both layouts, and finds them relative to itself — so it reads the repo's trees from the repo root, and `~/.claude/agents` plus `~/.claude/skills` once installed. The agents appear as `ginger` and `alpha` on the next Claude Code start.
 
 ### setup.sh
 
