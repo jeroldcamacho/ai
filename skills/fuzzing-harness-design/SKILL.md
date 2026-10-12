@@ -28,7 +28,7 @@ in `sanitizers-and-coverage`.
 | Go | `go test -fuzz` (stdlib) | native, no extra tooling |
 | Java/JVM | Jazzer | libFuzzer-backed JVM instrumentation |
 
-**Check availability with `./ginger-setup.sh --verify-tools` rather than from memory** — this
+**Check availability with `./setup.sh --agent=ginger --verify-tools` rather than from memory** — this
 paragraph has been wrong twice. What is structural rather than incidental:
 
 - **honggfuzz ships its instrumenting compiler wrappers separately from the fuzzer binary**, and

@@ -235,5 +235,5 @@ fail honestly.
 - Rust's `CARGOLINT` and unvalidated trait-supplied bounds → `rust-security-audit`
 - Non-constant-time comparison as a footgun, and weak-RNG defaults → `crypto-side-channel-audit`
 - A dependency's own dangerous defaults and install scripts → `supply-chain-audit`
-- Auth-specific default and fallback patterns in web targets → `auth-sec`, `code-security`
+- Auth-specific default and fallback patterns in web targets → `code-security` (web-specific auth skills are out of scope for this toolchain)
 - LLM/agent tool-permission defaults → `llm-security`

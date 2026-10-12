@@ -111,7 +111,7 @@ Increasingly the real obstacle on mobile and hardened desktop targets:
 - Inline-hook detection: the function prologue no longer matches the on-disk bytes.
 - `ptrace(PTRACE_TRACEME)` on itself to occupy the tracer slot and block attach.
 
-Countermeasures: rename and re-port `frida-server`, use `frida-gadget` embedded in the app instead of attaching, hook the detection functions themselves early, or fall back to static patching. Mobile specifics — including SSL pinning interaction — are `android-pentesting-tricks`, `ios-pentesting-tricks`, and `mobile-ssl-pinning-bypass`.
+Countermeasures: rename and re-port `frida-server`, use `frida-gadget` embedded in the app instead of attaching, hook the detection functions themselves early, or fall back to static patching. Mobile specifics — Frida detection on a device, root/jailbreak checks, attestation and SSL pinning — are an app assessment rather than binary RE: hand them to the `alpha` agent.
 
 ## Choosing a Bypass
 
@@ -144,4 +144,4 @@ rizin -w -qc 's 0x1234; wx 9090; q' ./target       # record before/after bytes i
 
 ## Related Skills
 
-`dynamic-verification` (debugger operation, crash triage) · `code-obfuscation-deobfuscation` (packers, obfuscation on top of anti-debug) · `symbolic-execution-tools` (emulate instead of debug) · `re-tools` (locating checks in a stripped binary) · `vm-and-bytecode-reverse` (protector VMs) · `android-pentesting-tricks` / `ios-pentesting-tricks` / `mobile-ssl-pinning-bypass` (mobile instrumentation detection).
+`dynamic-verification` (debugger operation, crash triage) · `code-obfuscation-deobfuscation` (packers, obfuscation on top of anti-debug) · `symbolic-execution-tools` (emulate instead of debug) · `re-tools` (locating checks in a stripped binary) · `vm-and-bytecode-reverse` (protector VMs).

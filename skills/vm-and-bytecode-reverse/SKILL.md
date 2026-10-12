@@ -66,7 +66,7 @@ Far cheaper: the instruction set is documented and decompilers exist.
 |---|---|---|---|
 | **Python** | `.pyc`, frozen, PyInstaller | `pycdc`/`decompyle++`, `uncompyle6`, `xdis`, `pyinstxtractor` | Decompilers lag new versions — fall back to `dis` on the code object, which always works |
 | **Java** | `.class`, `.jar` | `jadx`, `CFR`, `procyon`, `Fernflower`, `javap -c` | Recovery is usually near-source |
-| **Android** | `.dex`, `.odex`, `.vdex` | `jadx`, `apktool`, `baksmali`/`smali`, `dex2jar` | smali for patch-and-rebuild; see `android-pentesting-tricks` |
+| **Android** | `.dex`, `.odex`, `.vdex` | `jadx`, `apktool`, `baksmali`/`smali`, `dex2jar` | smali for patch-and-rebuild. Reversing the DEX is yours; assessing the installed app is the `alpha` agent's |
 | **.NET** | CIL/MSIL | `ILSpy`, `dnSpyEx`, `de4dot`, `monodis` | `de4dot` first — it unpacks most commodity .NET obfuscators |
 | **WebAssembly** | `.wasm` | `wasm2wat`, `wabt`, `wasm-decompile`, Ghidra WASM loader | Increasingly common in browser targets; see `browser-exploitation-v8` |
 | **Lua** | `.luac` | `unluac`, `luadec` | Common in games and embedded UIs |
@@ -117,9 +117,9 @@ apktool d app.apk -o out && $EDITOR out/smali/.../Check.smali && apktool b out -
 | Bytecode blob is encrypted at rest | Decrypted per-block at runtime | Dump the blob from memory after decryption |
 | `uncompyle6`/`pycdc` errors out | Unsupported Python version, or anti-decompile bytecode | Use `dis` on the code object |
 | Decompiled Java won't recompile | Decompiler artefacts | Patch at bytecode/smali level instead |
-| APK installs but crashes after patching | Not re-signed, or signature check in-app | Re-sign; look for integrity checks (`android-pentesting-tricks`) |
+| APK installs but crashes after patching | Not re-signed, or signature check in-app | Re-sign; in-app integrity and attestation checks belong to the `alpha` agent |
 | Devirtualisation is taking days | Scope too broad | Recover only the handlers on your target path |
 
 ## Related Skills
 
-`code-obfuscation-deobfuscation` (deciding it's a VM; native obfuscation) · `symbolic-execution-tools` (recovering handler semantics — the key technique) · `re-tools` (tracing, disassembly) · `dynamic-verification` (breakpoints at the VM boundary) · `android-pentesting-tricks` / `ios-pentesting-tricks` (mobile bytecode) · `browser-exploitation-v8` (WASM and JS engine bytecode).
+`code-obfuscation-deobfuscation` (deciding it's a VM; native obfuscation) · `symbolic-execution-tools` (recovering handler semantics — the key technique) · `re-tools` (tracing, disassembly) · `dynamic-verification` (breakpoints at the VM boundary) · `browser-exploitation-v8` (WASM and JS engine bytecode).

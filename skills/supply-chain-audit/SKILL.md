@@ -93,7 +93,7 @@ npm audit --json                          # or: npm audit --omit=dev
 ~/.cargo/bin/cargo-audit audit              # Cargo advisories (cargo-deny is usually absent)
 ```
 
-**Verified availability here — regenerate with `./ginger-setup.sh --verify-tools`. This is exactly the case the `command -v` rule warns about** —
+**Verified availability here — regenerate with `./setup.sh --agent=ginger --verify-tools`. This is exactly the case the `command -v` rule warns about** —
 `~/go/bin` is not on the default `PATH`, so these three look absent and are not:
 
 | Tool | Location |

@@ -103,7 +103,7 @@ AFL_USE_MSAN=1  afl-clang-fast -O2 -o target_msan target.c
 clang -g -O1 -fsanitize=memory -fsanitize-memory-track-origins=2 -o target_msan target.c
 clang -g -O2 -fsanitize=thread -o target_tsan target.c
 
-# Rust — sanitizers are nightly-only; verify the toolchain with ./ginger-setup.sh --verify-tools
+# Rust — sanitizers are nightly-only; verify the toolchain with ./setup.sh --agent=ginger --verify-tools
 RUSTFLAGS="-Zsanitizer=address" ~/.cargo/bin/cargo +nightly test --target x86_64-unknown-linux-gnu
 ```
 
@@ -111,7 +111,7 @@ RUSTFLAGS="-Zsanitizer=address" ~/.cargo/bin/cargo +nightly test --target x86_64
 what ships, enough frame pointers that the stack trace is readable. `-O0` changes behaviour too
 much (stack layout, no inlining) and `-O2` can hide the frames you need.
 
-**Check availability with `./ginger-setup.sh --verify-tools`, not from memory.** One structural
+**Check availability with `./setup.sh --agent=ginger --verify-tools`, not from memory.** One structural
 point worth carrying: where `valgrind` is absent, **Memcheck is not an ASan fallback** — if the
 target cannot be rebuilt with ASan, say so and fall back to debugger-based triage
 (`dynamic-verification`) rather than assuming Valgrind is there. Rust sanitizers and

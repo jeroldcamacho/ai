@@ -330,7 +330,7 @@ joern-parse . -o cpg.bin                   # no Rust frontend — do not pretend
 **Do not trust a remembered tool inventory — including the one this skill used to carry.** Rust
 tooling here lives outside `$PATH` (`~/.cargo/bin`), `miri` is nightly-only so its availability
 depends on which toolchains are installed, and all of it changes. Run
-`./ginger-setup.sh --verify-tools` (in `~/.claude/agents/`) for the current state; it probes every
+`./setup.sh --agent=ginger --verify-tools` (in `~/.claude/agents/`) for the current state; it probes every
 tool below, resolves the off-`PATH` ones, and reports whether `cargo +<tc> miri` actually runs.
 
 Two facts about `miri` that do **not** change and that set the evidence bar:

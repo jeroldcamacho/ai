@@ -46,7 +46,7 @@ Once a class is confirmed and you are moving from audit to proof, go straight to
 | Type confusion in a JS engine | `browser-exploitation-v8` |
 | Anything in kernel/driver context | `kernel-exploitation` |
 | Assessing what the mitigations allow | `binary-protection-bypass` |
-| Command injection / shell sinks | `exploit-dev`, `injection-checking` |
+| Command injection / shell sinks | `cmdi-command-injection`, `exploit-dev` |
 
 ### Stack Buffer Overflow (CWE-121)
 - Unbounded copies into fixed buffers.

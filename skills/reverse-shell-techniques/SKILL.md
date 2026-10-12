@@ -233,4 +233,4 @@ Report explicitly:
 
 Never leave persistence in place after an engagement. If the client asks you to leave access for a retest, get it in writing and document it prominently.
 
-Related skills: `file-access-vuln` (upload to RCE — where web shells usually come from), `injection-checking` (command injection as the initial execution), `api-sec` and `business-logic-vuln` (how you got there), `code-security` (the fix for the underlying flaw).
+Related skills: `cmdi-command-injection` (command injection as the initial execution), `code-security` (the fix for the underlying flaw). Web-specific routes in (upload-to-RCE, API and business-logic abuse) are out of scope for this toolchain — note how access was obtained and move on.

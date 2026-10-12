@@ -91,7 +91,7 @@ Say which container you analysed, and do not let an ELF-shaped tool's silence be
 - Triage sequence and the rizin/radare2 command set → `re-tools`
 - Mitigation assessment before technique selection → `binary-protection-bypass`
 - Windows driver IOCTL surface, as the analogue of the Linux ioctl surface → `kernel-exploitation`
-- Mobile-side Mach-O, entitlements, and pinning → `ios-pentesting-tricks`
+- Mobile-side Mach-O, entitlements, and pinning → **out of scope here**; that is an app assessment, so hand it to the `alpha` agent (`ios-pentesting-tricks`). Stay with this skill for the Mach-O container, code-signing state and protections themselves.
 - Bug classes and sinks, to be re-derived in Win32/ObjC terms → `bug-class-catalog`, `c-cpp-review`
 
 *PE/Mach-O container specifics adapted from the REx-skill `SKILL-RE` reference (github.com/tihanyin/REx-skill, §22), reconciled with this agent's Binary Ninja default and coverage conventions.*
