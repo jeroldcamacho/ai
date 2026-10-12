@@ -2,8 +2,8 @@
 # Prerequisite installer and auditor for the GINGER (binary/source VR) and
 # ALPHA (mobile pentest) agents.
 #
-# Run with no arguments for usage. The four primary modes are --install-deps,
-# --verify-tools and --write; usage() below is the single source of
+# Run with no arguments for usage. The modes are --install-deps, --verify-tools,
+# --write, --selftest and --new-engagement; usage() below is the single source of
 # truth for all of them, so this comment cannot drift out of date.
 #
 # Detection deliberately does NOT rely on `command -v` alone. GDB plugins are
@@ -109,11 +109,14 @@ esac
 want(){ [ "${AGENT:-all}" = all ] || [ "${AGENT:-all}" = "$1" ]; }
 
 # Where the agent files and the skills live, relative to wherever this script is.
-# Two layouts are supported and both must find their OWN trees:
-#   repo checkout   <repo>/setup.sh   with <repo>/agents and <repo>/skills
-#   installed       ~/.claude/agents/setup.sh   with ~/.claude/skills
-# A clone that audited the installed tree would pass while its own copies were
-# broken, so the checkout case is tested first.
+# The script sits one level ABOVE both, in either layout:
+#   repo checkout   <repo>/setup.sh    with <repo>/agents  and <repo>/skills
+#   installed       ~/.claude/setup.sh with ~/.claude/agents and ~/.claude/skills
+# So the first branch covers both, and --selftest reads ~/.claude/agents and
+# ~/.claude/skills once installed. A clone that audited the installed tree would
+# report success while its own copies were broken, which is why the directories
+# beside the script win over any absolute path.
+# The third branch is back-compat for a copy still sitting inside ~/.claude/agents.
 SELF_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")"
 if   [ -d "$SELF_DIR/agents" ] && [ -d "$SELF_DIR/skills" ]; then
   AGENTS_DIR="$SELF_DIR/agents";          SKILLS_DIR="$SELF_DIR/skills"
@@ -139,7 +142,6 @@ miss(){ printf "  ${R}manual${N}  %s${D} — %s${N}\n" "$1" "$2"; }
 hdr(){ printf "\n${B}%s${N}\n" "$1"; }
 
 MISSING_MANUAL=()
-
 
 # ---------- --new-engagement: scaffold the ledger (Evidence Discipline rule 7) ----------
 # Three append-only logs, outside the target tree by construction. Never inside the
@@ -421,11 +423,6 @@ case "$AGENT" in
   all)   INVENTORY+=( "${INVENTORY_ALPHA[@]}" ) ;;
 esac
 
-# ---------- --selftest: do the docs still name commands this script accepts? ----------
-# Three times an interface change (a rename, dropping --check, requiring --agent)
-# silently invalidated commands embedded in GINGER.md, ALPHA.md and the skills.
-# Markdown cannot fail a syntax check, so nothing caught it. This does: every
-# documented invocation is re-parsed by the current argument handler.
 # ---------- package tiers (data only; install logic is further down) ----------
 # Declared up here because --selftest reads them to answer "does anything in
 # this toolchain track that tool?" -- which needs the tiers and the INVENTORY
@@ -464,6 +461,11 @@ APT_OPT=( wabt android-sdk-libsparse-utils ncat metasploit-framework )
 APT_MOBILE=( adb apksigner zipalign libimobiledevice-utils ideviceinstaller
              ifuse libplist-utils mitmproxy scrcpy )
 
+# ---------- --selftest: do the docs still name commands this script accepts? ----------
+# Three times an interface change (a rename, dropping --check, requiring --agent)
+# silently invalidated commands embedded in GINGER.md, ALPHA.md and the skills.
+# Markdown cannot fail a syntax check, so nothing caught it. This does: every
+# documented invocation is re-parsed by the current argument handler.
 if [ "$MODE" = selftest ]; then
   hdr "Self-test — documented invocations"
   ROOT="$AGENTS_DIR"; SKILLS="$SKILLS_DIR"
